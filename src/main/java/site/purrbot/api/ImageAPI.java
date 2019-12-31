@@ -19,8 +19,8 @@
 package site.purrbot.api;
 
 import ch.qos.logback.classic.Logger;
+import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
-import spark.Request;
 import spark.Spark;
 
 import java.io.File;
@@ -63,33 +63,32 @@ public class ImageAPI{
             String path = request.pathInfo().replaceFirst("/api/img/", "").replace("../", "");
             
             File file = new File(base, path + "/");
+            JSONObject json = new JSONObject();
             
             if(!file.exists() || file.isAbsolute()){
-                response.status(403);
-                response.type("application/json");
-                response.body("{\"code\": 403,\"message\": \"Not supported API path.\"}");
+                json.put("code", 403).put("message", "Not supported API path.");
                 
-                return response.body();
+                response.status(403);
             }else{
                 File[] files = file.listFiles(filter);
                 if(files == null || files.length == 0){
+                    json.put("code", 403).put("message", "The selected directory doesn't contain any images.");
+                    
                     response.status(403);
-                    response.type("application/json");
-                    response.body("{\"code\": 403,\"message\": \"The selected folder contains no images.\"}");
-    
                 }else{
                     File selected = files[random.nextInt(files.length)];
+                    json.put("code", 200).put("link", generateLink(selected));
+                    
                     response.status(200);
-                    response.type("application/json");
-                    response.body("{\"code\": 200,\"link\": \"" + generateLink(request, selected) + "\"}");
-    
                 }
-                return response.body();
             }
+            response.type("application/json");
+            response.body(json.toString());
+            return response.body();
         });
     }
     
-    private String generateLink(Request request, File file){
+    private String generateLink(File file){
         return ("https://purrbot.site/" + file.getPath()).replace("\\", "/");
     }
 }

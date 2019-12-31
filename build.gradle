@@ -6,7 +6,7 @@ plugins {
 }
 
 group 'site.purrbot'
-version '1.0.0'
+version '1.0.5'
 
 mainClassName = 'site.purrbot.api.ImageAPI'
 
@@ -19,6 +19,7 @@ repositories {
 dependencies {
     compile group: 'com.sparkjava', name: 'spark-core', version: '2.9.1'
     compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+    compile group: 'org.json', name: 'json', version: '20190722'
 }
 
 
