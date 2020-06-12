@@ -75,7 +75,9 @@ public class ImageAPI{
             }else{
                 File[] files = file.listFiles(filter);
                 if(files == null || files.length == 0){
-                    json.put("code", 403).put("message", "The selected directory doesn't contain any images.");
+                    json.put("code", 403)
+                        .put("message", "The selected directory doesn't contain any images.")
+                        .put("time", System.currentTimeMillis() - time);
                     
                     response.status(403);
                 }else{
