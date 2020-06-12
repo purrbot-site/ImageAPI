@@ -31,11 +31,11 @@ import java.util.Random;
 
 public class ImageAPI{
     
-    private Random random = new Random();
-    private Logger logger = (Logger)LoggerFactory.getLogger(ImageAPI.class);
-    private List<String> extensions = Arrays.asList(".png", ".jpg", ".jpeg", ".gif", ".svg");
-    private File base = new File("img/");
-    private FilenameFilter filter = (dir, name) -> {
+    private final Random random = new Random();
+    private final Logger logger = (Logger)LoggerFactory.getLogger(ImageAPI.class);
+    private final List<String> extensions = Arrays.asList(".png", ".jpg", ".jpeg", ".gif", ".svg");
+    private final File base = new File("img/");
+    private final FilenameFilter filter = (dir, name) -> {
         for(String ext : extensions)
             if(name.endsWith(ext))
                 return true;
@@ -60,13 +60,16 @@ public class ImageAPI{
         Spark.port(8001);
         
         Spark.get("/api/img/*", (request, response) -> {
+            long time = System.currentTimeMillis();
             String path = request.pathInfo().replaceFirst("/api/img/", "").replace("../", "");
             
             File file = new File(base, path + "/");
             JSONObject json = new JSONObject();
             
             if(!file.exists() || file.isAbsolute()){
-                json.put("code", 403).put("message", "Not supported API path.");
+                json.put("code", 403)
+                    .put("message", "Not supported API path.")
+                    .put("time", System.currentTimeMillis() - time);
                 
                 response.status(403);
             }else{
@@ -77,7 +80,9 @@ public class ImageAPI{
                     response.status(403);
                 }else{
                     File selected = files[random.nextInt(files.length)];
-                    json.put("code", 200).put("link", generateLink(selected));
+                    json.put("code", 200)
+                        .put("link", generateLink(selected))
+                        .put("time", System.currentTimeMillis() - time);
                     
                     response.status(200);
                 }

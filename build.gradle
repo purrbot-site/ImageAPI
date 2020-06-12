@@ -1,16 +1,20 @@
 plugins {
     id 'java'
     id 'application'
-    id 'com.github.johnrengelman.shadow' version '4.0.4'
+    id 'com.github.johnrengelman.shadow' version '5.2.0'
     id 'idea'
 }
 
 group 'site.purrbot'
-version '1.0.5'
+version '1.1.0'
 
-mainClassName = 'site.purrbot.api.ImageAPI'
+java {
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+}
 
-sourceCompatibility = 1.8
+application {
+    mainClassName = "site.purrbot.api.ImageAPI"
+}
 
 repositories {
     mavenCentral()
@@ -22,45 +26,19 @@ dependencies {
     compile group: 'org.json', name: 'json', version: '20190722'
 }
 
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '4.8'
-}
-
-
 compileJava {
     classpath = sourceSets.main.compileClasspath
-    options.encoding = 'UTF-8'
+    options.encoding('UTF-8')
 }
 
 tasks.withType(JavaCompile) {
-    options.encoding = 'UTF-8'
+    options.encoding('UTF-8')
 }
-
-build.dependsOn shadowJar
 
 artifacts {
     archives shadowJar
 }
 
-task cleanDistTar(type: Delete) { delete files(distTar) }
-distTar { classifier = "trash" }
-distTar.finalizedBy cleanDistTar
-
-task cleanDistZip(type: Delete) { delete files(distZip) }
-distZip { classifier = "trash" }
-distZip.finalizedBy cleanDistZip
-
-task cleanShittyJar(type: Delete) { delete files(jar) }
-jar { classifier = "trash" }
-jar.finalizedBy cleanShittyJar
-
-jar {
-    classifier = "nodeps"
-}
-
 shadowJar {
-    classifier = ""
-    baseName = 'ImageAPI'
-    archiveName = "ImageAPI.jar"
+    archiveFileName = 'ImageAPI.jar'
 }
