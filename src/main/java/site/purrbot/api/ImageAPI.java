@@ -19,29 +19,26 @@
 package site.purrbot.api;
 
 import ch.qos.logback.classic.Logger;
+import com.google.gson.Gson;
 import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
-import spark.Spark;
+import site.purrbot.api.endpoints.Quote;
+import site.purrbot.api.endpoints.Status;
+import spark.Redirect;
+import spark.Response;
 
+import javax.servlet.http.HttpServletResponse;
 import java.io.File;
-import java.io.FilenameFilter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.io.IOException;
+
+import static spark.Spark.*;
 
 public class ImageAPI{
     
-    private final Random random = new Random();
     private final Logger logger = (Logger)LoggerFactory.getLogger(ImageAPI.class);
-    private final List<String> extensions = Arrays.asList(".png", ".jpg", ".jpeg", ".gif", ".svg");
     private final File base = new File("img/");
-    private final FilenameFilter filter = (dir, name) -> {
-        for(String ext : extensions)
-            if(name.endsWith(ext))
-                return true;
-        
-        return false;
-    };
+    
+    private final String docs_url = "https://docs.purrbot.site/api/imageapi";
     
     public static void main(String[] args){
         new ImageAPI().boot();
@@ -51,51 +48,86 @@ public class ImageAPI{
         logger.info("Starting ImageAPI...");
         if(!base.exists()){
             logger.info("Couldn't find base folder. Generating it...");
-            //noinspection ResultOfMethodCallIgnored
-            base.mkdir();
+            if(base.mkdir())
+                logger.info("Successfully created folder!");
         }
-    
-        Spark.initExceptionHandler(e -> logger.error("Caught an exception", e));
-        Spark.ipAddress("127.0.0.1");
-        Spark.port(8001);
         
-        Spark.get("/api/img/*", (request, response) -> {
-            long time = System.currentTimeMillis();
-            String path = request.pathInfo().replaceFirst("/api/img/", "").replace("../", "");
+        ImageUtil imageUtil = new ImageUtil();
+    
+        initExceptionHandler(e -> logger.error("Caught an exception", e));
+        port(2000);
+        
+        
+        path("/api", () -> {
+            redirect.get("/quote", docs_url + "#quote", Redirect.Status.MOVED_PERMANENTLY);
+            redirect.get("/status", docs_url + "#status", Redirect.Status.MOVED_PERMANENTLY);
             
-            File file = new File(base, path + "/");
-            JSONObject json = new JSONObject();
-            
-            if(!file.exists() || file.isAbsolute()){
-                json.put("code", 403)
-                    .put("message", "Not supported API path.")
-                    .put("time", System.currentTimeMillis() - time);
+            get("/img/*", (request, response) -> {
+                logger.info("GET: " + request.pathInfo().replace("../", ""));
                 
-                response.status(403);
-            }else{
-                File[] files = file.listFiles(filter);
-                if(files == null || files.length == 0){
-                    json.put("code", 403)
-                        .put("message", "The selected directory doesn't contain any images.")
-                        .put("time", System.currentTimeMillis() - time);
-                    
-                    response.status(403);
-                }else{
-                    File selected = files[random.nextInt(files.length)];
-                    json.put("code", 200)
-                        .put("link", generateLink(selected))
-                        .put("time", System.currentTimeMillis() - time);
-                    
-                    response.status(200);
+                long time = System.currentTimeMillis();
+                String path = request.pathInfo().replaceFirst("/api/img/", "").replace("../", "");
+                
+                return imageUtil.getResponse(path, response, time);
+            });
+    
+            Gson gson = new Gson();
+    
+            post("/quote", (request, response) -> {
+                logger.info("POST: " + request.pathInfo().replace("../", ""));
+        
+                Quote quote = gson.fromJson(request.body(), Quote.class);
+        
+                if(quote == null)
+                    return getErrorJSON(response, 403, "Invalid or empty JSON body received.");
+        
+                try{
+                    HttpServletResponse raw = response.raw();
+                    raw.setContentType("image/png");
+                    raw.getOutputStream().write(imageUtil.getQuote(quote));
+                    raw.getOutputStream().flush();
+                    raw.getOutputStream().close();
+            
+                    return raw;
+                }catch(IOException ex){
+                    return getErrorJSON(response, 500, "Couldn't generate Image. Make sure the values are valid!");
                 }
-            }
-            response.type("application/json");
-            response.body(json.toString());
-            return response.body();
+            });
+    
+            post("/status", (request, response) -> {
+                logger.info("POST: " + request.pathInfo().replace("../", ""));
+        
+                Status status = gson.fromJson(request.body(), Status.class);
+        
+                if(status == null)
+                    return getErrorJSON(response, 403, "Invalid or empty JSON body received.");
+        
+                try{
+                    HttpServletResponse raw = response.raw();
+                    raw.setContentType("image/png");
+                    raw.getOutputStream().write(imageUtil.getStatus(status));
+                    raw.getOutputStream().flush();
+                    raw.getOutputStream().close();
+    
+                    return raw;
+                }catch(IOException ex){
+                    ex.printStackTrace();
+                    return getErrorJSON(response, 500, "Couldn't generate Image. Make sure the values are valid!");
+                }
+            });
         });
+        
     }
     
-    private String generateLink(File file){
-        return ("https://purrbot.site/" + file.getPath()).replace("\\", "/");
+    private String getErrorJSON(Response response, int code, String message){
+        JSONObject json = new JSONObject()
+                .put("code", code)
+                .put("message", message);
+        
+        response.status(code);
+        response.type("application/json");
+        response.body(json.toString());
+        
+        return response.body();
     }
 }
