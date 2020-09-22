@@ -51,7 +51,10 @@ Replace `:category` with a category name and `:type` with the category's support
 | `background` | `img`  |
 | `bite`       | `gif`  |
 | `cuddle`     | `gif`  |
+| `eevee`      | `gif`  |
+|              | `img`  |
 | `feed`       | `gif`  |
+| `fluff`      | `gif`  |
 | `holo`       | `img`  |
 | `hug`        | `gif`  |
 | `icon`       | `img`  |
@@ -78,6 +81,7 @@ Replace `:category` with a category name and `:type` with the category's support
 | --------------- | ------ |
 | `anal`          | `gif`  |
 | `blowjob`       | `gif`  |
+| `cum`           | `gif`  |
 | `fuck`          | `gif`  |
 | `neko`          | `gif`  |
 |                 | `img`  |
@@ -86,6 +90,7 @@ Replace `:category` with a category name and `:type` with the category's support
 | `threesome_fff` | `gif`  |
 | `threesome_ffm` | `gif`  |
 | `threesome_mmf` | `gif`  |
+| `yaoi`          | `gif`  |
 | `yuri`          | `gif`  |
 
 ## Report images
