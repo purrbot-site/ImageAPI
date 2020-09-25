@@ -114,15 +114,21 @@ public class ImageAPI{
                         .put(getInfoJSON("quote"))
                         .put(getInfoJSON("status"));
                 
+                JSONObject links = new JSONObject()
+                        .put("documentation", "https://docs.purrbot.site/api")
+                        .put("website", "https://purrbot.site")
+                        .put("github", "https://github.com/purrbot-site");
+                
                 long finalTime = System.currentTimeMillis() - time;
                 JSONObject json = new JSONObject()
+                        .put("links", links)
                         .put("get", get)
                         .put("post", post)
                         .put("code", 200)
                         .put("time", finalTime);
                 
                 response.type("application/json;");
-                response.body(json.toString());
+                response.body(json.toString(2));
                 
                 return response.body();
             });
