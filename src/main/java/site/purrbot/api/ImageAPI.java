@@ -74,6 +74,7 @@ public class ImageAPI{
                 JSONArray sfw = new JSONArray()
                         .put(getInfoJSON("background", false, true, IMG))
                         .put(getInfoJSON("bite", false, true, GIF))
+                        .put(getInfoJSON("blush", false, true, GIF))
                         .put(getInfoJSON("cuddle", false, true, GIF))
                         .put(getInfoJSON("eevee", false, true, BOTH))
                         .put(getInfoJSON("feed", false, true, GIF))
@@ -124,7 +125,7 @@ public class ImageAPI{
                         .put("links", links)
                         .put("get", get)
                         .put("post", post)
-                        .put("code", 200)
+                        .put("error", false)
                         .put("time", finalTime);
                 
                 response.type("application/json;");
@@ -192,7 +193,7 @@ public class ImageAPI{
     
     private String getErrorJSON(Response response, int code, String message){
         JSONObject json = new JSONObject()
-                .put("code", code)
+                .put("code", true)
                 .put("message", message);
         
         response.status(code);
@@ -203,7 +204,7 @@ public class ImageAPI{
     }
     
     private JSONObject getInfoJSON(String name){
-        return getInfoJSON(name, true, true, 0);
+        return getInfoJSON(name, true, true, IMG);
     }
     
     private JSONObject getInfoJSON(String name, boolean post, boolean isSfw, int type){

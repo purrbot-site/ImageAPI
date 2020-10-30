@@ -50,6 +50,7 @@ Replace `:category` with a category name and `:type` with the category's support
 | ------------ | ------ |
 | `background` | `img`  |
 | `bite`       | `gif`  |
+| `blush`      | `gif`  |
 | `cuddle`     | `gif`  |
 | `eevee`      | `gif`  |
 |              | `img`  |
