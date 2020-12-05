@@ -75,6 +75,7 @@ public class ImageAPI{
                         .put(getInfoJSON("background", false, true, IMG))
                         .put(getInfoJSON("bite", false, true, GIF))
                         .put(getInfoJSON("blush", false, true, GIF))
+                        .put(getInfoJSON("cry", false, true, GIF))
                         .put(getInfoJSON("cuddle", false, true, GIF))
                         .put(getInfoJSON("eevee", false, true, BOTH))
                         .put(getInfoJSON("feed", false, true, GIF))
