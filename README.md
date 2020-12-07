@@ -52,6 +52,7 @@ Replace `:category` with a category name and `:type` with the category's support
 | `bite`       | `gif`  |
 | `blush`      | `gif`  |
 | `cuddle`     | `gif`  |
+| `cry`        | `gif`  |
 | `eevee`      | `gif`  |
 |              | `img`  |
 | `feed`       | `gif`  |

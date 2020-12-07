@@ -46,9 +46,10 @@ public class ImageUtil{
     private final List<String> extensions = Arrays.asList(".png", ".jpg", ".jpeg", ".gif", ".svg");
     private final File base = new File("img/");
     private final FilenameFilter filter = (dir, name) -> {
-        for(String ext : extensions)
+        for(String ext : extensions){
             if(name.endsWith(ext))
                 return true;
+        }
         
         return false;
     };
@@ -58,23 +59,23 @@ public class ImageUtil{
         JSONObject json = new JSONObject();
         
         if(!file.exists() || file.isAbsolute()){
-            json.put("code", 403)
-                .put("message", "Not supported API path.")
-                .put("time", System.currentTimeMillis() - time);
-            
+            json.put("error", true)
+                .put("message", "Not supported API path.");
+    
+            logger.error("Couldn't perform GET request for /{}! Reason: Invalid Path.", path);
             response.status(403);
         }else{
             File[] files = file.listFiles(filter);
             if(files == null || files.length == 0){
-                json.put("code", 403)
-                    .put("message", "The selected path doesn't contain any images.")
-                    .put("time", System.currentTimeMillis() - time);
-                
+                json.put("error", true)
+                    .put("message", "The selected path doesn't contain any images.");
+    
+                logger.error("Couldn't perform GET request for /{}! Reason: No images.", path);
                 response.status(403);
             }else{
                 File selected = files[random.nextInt(files.length)];
-                
-                json.put("code", 200)
+    
+                json.put("error", false)
                     .put("link", getPath(selected))
                     .put("time", System.currentTimeMillis() - time);
                 response.status(200);

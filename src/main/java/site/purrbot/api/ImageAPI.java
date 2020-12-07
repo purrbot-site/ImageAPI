@@ -20,7 +20,6 @@ package site.purrbot.api;
 
 import ch.qos.logback.classic.Logger;
 import com.google.gson.Gson;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
 import site.purrbot.api.endpoints.Quote;
@@ -40,10 +39,6 @@ public class ImageAPI{
     private final File base = new File("img/");
     
     private final String docs_url = "https://docs.purrbot.site/api";
-    
-    private final int GIF = 0;
-    private final int IMG = 1;
-    private final int BOTH = 2;
     
     public static void main(String[] args){
         new ImageAPI().boot();
@@ -66,74 +61,6 @@ public class ImageAPI{
         path("/api", () -> {
             redirect.get("/quote", docs_url + "#quote", Redirect.Status.MOVED_PERMANENTLY);
             redirect.get("/status", docs_url + "#status", Redirect.Status.MOVED_PERMANENTLY);
-            
-            get("/list", (request, response) -> {
-                logger.info("GET: " + request.pathInfo().replace("../", ""));
-                long time = System.currentTimeMillis();
-                
-                JSONArray sfw = new JSONArray()
-                        .put(getInfoJSON("background", false, true, IMG))
-                        .put(getInfoJSON("bite", false, true, GIF))
-                        .put(getInfoJSON("blush", false, true, GIF))
-                        .put(getInfoJSON("cry", false, true, GIF))
-                        .put(getInfoJSON("cuddle", false, true, GIF))
-                        .put(getInfoJSON("eevee", false, true, BOTH))
-                        .put(getInfoJSON("feed", false, true, GIF))
-                        .put(getInfoJSON("fluff", false, true, GIF))
-                        .put(getInfoJSON("holo", false, true, IMG))
-                        .put(getInfoJSON("hug", false, true, GIF))
-                        .put(getInfoJSON("icon", false, true, IMG))
-                        .put(getInfoJSON("kiss", false, true, GIF))
-                        .put(getInfoJSON("kitsune", false, true, IMG))
-                        .put(getInfoJSON("lick", false, true, GIF))
-                        .put(getInfoJSON("neko", false, true, BOTH))
-                        .put(getInfoJSON("pat", false, true, GIF))
-                        .put(getInfoJSON("poke", false, true, GIF))
-                        .put(getInfoJSON("senko", false, true, IMG))
-                        .put(getInfoJSON("slap", false, true, GIF))
-                        .put(getInfoJSON("tail", false, true, GIF))
-                        .put(getInfoJSON("tickle", false, true, GIF));
-                
-                JSONArray nsfw = new JSONArray()
-                        .put(getInfoJSON("anal", false, false, GIF))
-                        .put(getInfoJSON("blowjob", false, false, GIF))
-                        .put(getInfoJSON("cum", false, false, GIF))
-                        .put(getInfoJSON("fuck", false, false, GIF))
-                        .put(getInfoJSON("neko", false, false, BOTH))
-                        .put(getInfoJSON("pussylick", false, false, GIF))
-                        .put(getInfoJSON("solo", false, false, GIF))
-                        .put(getInfoJSON("threesome_fff", false, false, GIF))
-                        .put(getInfoJSON("threesome_ffm", false, false, GIF))
-                        .put(getInfoJSON("threesome_mmf", false, false, GIF))
-                        .put(getInfoJSON("yaoi", false, false, GIF))
-                        .put(getInfoJSON("yuri", false, false, GIF));
-                
-                JSONObject get = new JSONObject()
-                        .put("sfw", sfw)
-                        .put("nsfw", nsfw);
-                
-                JSONArray post = new JSONArray()
-                        .put(getInfoJSON("quote"))
-                        .put(getInfoJSON("status"));
-                
-                JSONObject links = new JSONObject()
-                        .put("documentation", "https://docs.purrbot.site/api")
-                        .put("website", "https://purrbot.site")
-                        .put("github", "https://github.com/purrbot-site");
-                
-                long finalTime = System.currentTimeMillis() - time;
-                JSONObject json = new JSONObject()
-                        .put("links", links)
-                        .put("get", get)
-                        .put("post", post)
-                        .put("error", false)
-                        .put("time", finalTime);
-                
-                response.type("application/json;");
-                response.body(json.toString(2));
-                
-                return response.body();
-            });
             
             get("/img/*", (request, response) -> {
                 logger.info("GET: " + request.pathInfo().replace("../", ""));
@@ -163,6 +90,7 @@ public class ImageAPI{
             
                     return raw;
                 }catch(IOException ex){
+                    logger.error("Couldn't perform POST request for /quote!", ex);
                     return getErrorJSON(response, 500, "Couldn't generate Image. Make sure the values are valid!");
                 }
             });
@@ -184,7 +112,7 @@ public class ImageAPI{
     
                     return raw;
                 }catch(IOException ex){
-                    ex.printStackTrace();
+                    logger.error("Couldn't perform POST request for /status!", ex);
                     return getErrorJSON(response, 500, "Couldn't generate Image. Make sure the values are valid!");
                 }
             });
@@ -194,7 +122,7 @@ public class ImageAPI{
     
     private String getErrorJSON(Response response, int code, String message){
         JSONObject json = new JSONObject()
-                .put("code", true)
+                .put("error", true)
                 .put("message", message);
         
         response.status(code);
@@ -202,48 +130,5 @@ public class ImageAPI{
         response.body(json.toString());
         
         return response.body();
-    }
-    
-    private JSONObject getInfoJSON(String name){
-        return getInfoJSON(name, true, true, IMG);
-    }
-    
-    private JSONObject getInfoJSON(String name, boolean post, boolean isSfw, int type){
-        JSONObject json = new JSONObject()
-                .put("name", name);
-    
-        JSONArray paths = new JSONArray();
-        if(post){
-            paths.put("https://purrbot.site/api/" + name);
-            
-            json.put("help", "https://docs.purrbot.site/api#" + name)
-                .put("paths", paths);
-        }else{
-            String sfw = isSfw ? "sfw" : "nsfw";
-            String requestType;
-            switch(type){
-                default:
-                case 0:
-                    paths.put("https://purrbot.site/api/img/" + sfw + "/" + name + "/gif");
-                    requestType = "gif";
-                    break;
-                
-                case 1:
-                    paths.put("https://purrbot.site/api/img/" + sfw + "/" + name + "/img");
-                    requestType = "img";
-                    break;
-                
-                case 2:
-                    paths.put("https://purrbot.site/api/img/" + sfw + "/" + name + "/gif")
-                         .put("https://purrbot.site/api/img/" + sfw + "/" + name + "/img");
-                    requestType = "type";
-                    break;
-            }
-            
-            json.put("help", "https://docs.purrbot.site/api#img" + sfw + name + requestType)
-                .put("paths", paths);
-        }
-        
-        return json;
     }
 }
