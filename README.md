@@ -51,8 +51,9 @@ Replace `:category` with a category name and `:type` with the category's support
 | `background` | `img`  |
 | `bite`       | `gif`  |
 | `blush`      | `gif`  |
-| `cuddle`     | `gif`  |
 | `cry`        | `gif`  |
+| `cuddle`     | `gif`  |
+| `dance`      | `gif`  |
 | `eevee`      | `gif`  |
 |              | `img`  |
 | `feed`       | `gif`  |
@@ -69,6 +70,7 @@ Replace `:category` with a category name and `:type` with the category's support
 | `poke`       | `gif`  |
 | `senko`      | `img`  |
 | `slap`       | `gif`  |
+| `smile`      | `gif`  |
 | `tail`       | `gif`  |
 | `tickle`     | `gif`  |
 
