@@ -20,7 +20,6 @@ package site.purrbot.api;
 
 import ch.qos.logback.classic.Logger;
 import io.javalin.http.Context;
-import io.javalin.http.HttpResponseException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
