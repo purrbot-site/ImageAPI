@@ -20,18 +20,18 @@ package site.purrbot.api;
 
 import ch.qos.logback.classic.Logger;
 import com.google.gson.Gson;
+import io.javalin.Javalin;
+import io.javalin.http.Context;
 import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
 import site.purrbot.api.endpoints.Quote;
 import site.purrbot.api.endpoints.Status;
-import spark.Redirect;
-import spark.Response;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
-
-import static spark.Spark.*;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ImageAPI{
     
@@ -41,94 +41,106 @@ public class ImageAPI{
     private final String docs_url = "https://docs.purrbot.site/api";
     
     public static void main(String[] args){
-        new ImageAPI().boot();
+        new ImageAPI().start();
     }
     
-    private void boot(){
+    private void start(){
         logger.info("Starting ImageAPI...");
         if(!base.exists()){
             logger.info("Couldn't find base folder. Generating it...");
-            if(base.mkdir())
-                logger.info("Successfully created folder!");
+            if(base.mkdirs()){
+                logger.info("Successfully created base folder!");
+            }else{
+                logger.warn("Couldn't create base folder!");
+            }
         }
         
-        ImageUtil imageUtil = new ImageUtil();
+        ImageUtil util = new ImageUtil(this);
+        Gson gson = new Gson();
     
-        initExceptionHandler(e -> logger.error("Caught an exception", e));
-        port(2000);
+        // Setup Javalin and make it handle all Exceptions
+        Javalin app = Javalin.create(config -> config.defaultContentType = "application/json").start(2000);
+        app.exception(Exception.class, (ex, ctx) -> logger.error("Exception caught", ex));
         
+        // Log any call to the /api endpoint
+        app.before("/api/*", ctx -> logger.info("HTTP Request on " + ctx.path()));
         
-        path("/api", () -> {
-            redirect.get("/quote", docs_url + "#quote", Redirect.Status.MOVED_PERMANENTLY);
-            redirect.get("/status", docs_url + "#status", Redirect.Status.MOVED_PERMANENTLY);
-            
-            get("/img/*", (request, response) -> {
-                logger.info("GET: " + request.pathInfo().replace("../", ""));
-                long time = System.currentTimeMillis();
-                
-                String path = request.pathInfo().replaceFirst("/api/img/", "").replace("../", "");
-                
-                return imageUtil.getResponse(path, response, time);
-            });
-    
-            Gson gson = new Gson();
-    
-            post("/quote", (request, response) -> {
-                logger.info("POST: " + request.pathInfo().replace("../", ""));
-        
-                Quote quote = gson.fromJson(request.body(), Quote.class);
-        
-                if(quote == null)
-                    return getErrorJSON(response, 403, "Invalid or empty JSON body received.");
-        
-                try{
-                    HttpServletResponse raw = response.raw();
-                    raw.setContentType("image/png");
-                    raw.getOutputStream().write(imageUtil.getQuote(quote));
-                    raw.getOutputStream().flush();
-                    raw.getOutputStream().close();
-            
-                    return raw;
-                }catch(IOException ex){
-                    logger.error("Couldn't perform POST request for /quote!", ex);
-                    return getErrorJSON(response, 500, "Couldn't generate Image. Make sure the values are valid!");
-                }
-            });
-    
-            post("/status", (request, response) -> {
-                logger.info("POST: " + request.pathInfo().replace("../", ""));
-        
-                Status status = gson.fromJson(request.body(), Status.class);
-        
-                if(status == null)
-                    return getErrorJSON(response, 403, "Invalid or empty JSON body received.");
-        
-                try{
-                    HttpServletResponse raw = response.raw();
-                    raw.setContentType("image/png");
-                    raw.getOutputStream().write(imageUtil.getStatus(status));
-                    raw.getOutputStream().flush();
-                    raw.getOutputStream().close();
-    
-                    return raw;
-                }catch(IOException ex){
-                    logger.error("Couldn't perform POST request for /status!", ex);
-                    return getErrorJSON(response, 500, "Couldn't generate Image. Make sure the values are valid!");
-                }
-            });
+        // Handle redirects
+        app.get("/api/quote", ctx -> {
+            logger.info("Performing redirect for /api/quote");
+            ctx.redirect(docs_url + "#quote", 301);
+        }).get("/api/status", ctx -> {
+            logger.info("Performing redirect for /api/status");
+            ctx.redirect(docs_url + "#status", 301);
         });
         
+        // Handle all /api/img/* requests
+        app.get("/api/img/*", ctx -> {
+            logger.info("Handle GET request for " + ctx.path());
+            long time = System.currentTimeMillis();
+            
+            String path = ctx.path().replaceFirst("/api/img", "").replace("../", "");
+            util.generateResponse(path, ctx, time);
+        });
+        
+        // Handle POST requests.
+        app.post("/api/quote", ctx -> {
+            logger.info("Handle POST request for /api/quote");
+            
+            Quote quote = gson.fromJson(ctx.body(), Quote.class);
+            if(quote == null){
+                sendErrorJSON(403, "Received invalid or empty JSON Body.", ctx);
+                return;
+            }
+            
+            try{
+                HttpServletResponse raw = ctx.res;
+                raw.setContentType("image/png");
+                raw.getOutputStream().write(util.getQuote(quote));
+                raw.getOutputStream().flush();
+                raw.getOutputStream().close();
+            }catch(IOException ex){
+                sendErrorJSON(500, "Couldn't generate Image. Make sure the values are valid!", ctx);
+            }
+        }).post("/api/status", ctx -> {
+            logger.info("Handle POST request for /api/status");
+            
+            Status status = gson.fromJson(ctx.body(), Status.class);
+            if(status == null){
+                sendErrorJSON(403, "Received invalid or empty JSON Body.", ctx);
+                return;
+            }
+            
+            try{
+                HttpServletResponse raw = ctx.res;
+                raw.setContentType("image/png");
+                raw.getOutputStream().write(util.getStatus(status));
+                raw.getOutputStream().flush();
+                raw.getOutputStream().close();
+            }catch(IOException ex){
+                sendErrorJSON(500, "Couldn't generate Image. Make sure the values are valid!", ctx);
+            }
+        }).post("/api/img/*", ctx -> sendErrorJSON(403, "POST requests are not allowed for this path!", ctx));
     }
     
-    private String getErrorJSON(Response response, int code, String message){
+    void sendErrorJSON(int code, String msg, Context ctx){
+        JSONObject details = new JSONObject(getDetailsMap(ctx));
         JSONObject json = new JSONObject()
                 .put("error", true)
-                .put("message", message);
+                .put("message", msg)
+                .put("details", details);
         
-        response.status(code);
-        response.type("application/json");
-        response.body(json.toString());
+        ctx.status(code);
+        ctx.result(json.toString(2));
+    }
+    
+    private Map<String, String> getDetailsMap(Context ctx){
+        Map<String, String> details = new HashMap<>();
         
-        return response.body();
+        details.put("path", ctx.path());
+        details.put("content-type", ctx.contentType() == null ? "unknown" : ctx.contentType());
+        details.put("user-agent", ctx.userAgent() == null ? "unknown" : ctx.userAgent());
+        
+        return details;
     }
 }

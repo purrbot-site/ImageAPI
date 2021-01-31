@@ -19,6 +19,8 @@
 package site.purrbot.api;
 
 import ch.qos.logback.classic.Logger;
+import io.javalin.http.Context;
+import io.javalin.http.HttpResponseException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -39,10 +41,12 @@ import java.util.List;
 
 public class ImageUtil{
     
+    private final ImageAPI api;
+    
     private final OkHttpClient CLIENT = new OkHttpClient();
     
     private final Random random = new Random();
-    private final Logger logger = (Logger) LoggerFactory.getLogger(ImageUtil.class);
+    private final Logger logger = (Logger)LoggerFactory.getLogger(ImageUtil.class);
     private final List<String> extensions = Arrays.asList(".png", ".jpg", ".jpeg", ".gif", ".svg");
     private final File base = new File("img/");
     private final FilenameFilter filter = (dir, name) -> {
@@ -54,37 +58,35 @@ public class ImageUtil{
         return false;
     };
     
-    String getResponse(String path, spark.Response response, long time){
+    public ImageUtil(ImageAPI api){
+        this.api = api;
+    }
+    
+    void generateResponse(String path, Context ctx, long time){
         File file = new File(base, path + "/");
         JSONObject json = new JSONObject();
         
         if(!file.exists() || file.isAbsolute()){
-            json.put("error", true)
-                .put("message", "Not supported API path.");
-    
-            logger.error("Couldn't perform GET request for /{}! Reason: Invalid Path.", path);
-            response.status(403);
+            logger.info("Couldn't perform GET request for {}! Reason: Invalid Path.", path);
+            
+            api.sendErrorJSON(403, "The selected API path is not supported!", ctx);
         }else{
             File[] files = file.listFiles(filter);
             if(files == null || files.length == 0){
-                json.put("error", true)
-                    .put("message", "The selected path doesn't contain any images.");
-    
-                logger.error("Couldn't perform GET request for /{}! Reason: No images.", path);
-                response.status(403);
+                logger.info("Couldn't perform GET request for {}! Reason: No images.", path);
+                
+                api.sendErrorJSON(403, "The selected API path does not contain any images!", ctx);
             }else{
                 File selected = files[random.nextInt(files.length)];
     
                 json.put("error", false)
                     .put("link", getPath(selected))
                     .put("time", System.currentTimeMillis() - time);
-                response.status(200);
+                
+                ctx.status(200);
+                ctx.result(json.toString(2));
             }
         }
-        
-        response.type("application/json");
-        response.body(json.toString());
-        return response.body();
     }
     
     byte[] getQuote(Quote quote) throws IOException{
