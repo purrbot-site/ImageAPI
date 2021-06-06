@@ -89,7 +89,7 @@ public class ImageAPI{
             
             Quote quote = gson.fromJson(ctx.body(), Quote.class);
             if(quote == null){
-                sendErrorJSON(403, "Received invalid or empty JSON Body.", ctx);
+                sendErrorJSON(400, "Received invalid or empty JSON Body.", ctx);
                 return;
             }
             
@@ -107,7 +107,7 @@ public class ImageAPI{
             
             Status status = gson.fromJson(ctx.body(), Status.class);
             if(status == null){
-                sendErrorJSON(403, "Received invalid or empty JSON Body.", ctx);
+                sendErrorJSON(400, "Received invalid or empty JSON Body.", ctx);
                 return;
             }
             
@@ -138,8 +138,8 @@ public class ImageAPI{
         Map<String, String> details = new HashMap<>();
         
         details.put("path", ctx.path());
-        details.put("content-type", ctx.contentType() == null ? "unknown" : ctx.contentType());
-        details.put("user-agent", ctx.userAgent() == null ? "unknown" : ctx.userAgent());
+        details.put("content-type", ctx.contentType() == null ? "NONE" : ctx.contentType());
+        details.put("user-agent", ctx.userAgent() == null ? "NONE" : ctx.userAgent());
         
         return details;
     }
