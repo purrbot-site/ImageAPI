@@ -24,6 +24,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
 import site.purrbot.api.endpoints.Quote;
@@ -61,31 +62,33 @@ public class ImageUtil{
         this.api = api;
     }
     
-    void generateResponse(String path, Context ctx, long time){
-        File file = new File(base, path + "/");
-        JSONObject json = new JSONObject();
+    void listContent(String path, Context ctx, long time){
+        File[] files = getFiles(path, ctx, time);
+        if(files.length == 0)
+            return;
         
-        if(!file.exists() || file.isAbsolute()){
-            logger.info("Couldn't perform GET request for {}! Reason: Invalid Path.", path);
-            
-            api.sendErrorJSON(403, "The selected API path is not supported!", ctx);
-        }else{
-            File[] files = file.listFiles(filter);
-            if(files == null || files.length == 0){
-                logger.info("Couldn't perform GET request for {}! Reason: No images.", path);
-                
-                api.sendErrorJSON(403, "The selected API path does not contain any images!", ctx);
-            }else{
-                File selected = files[random.nextInt(files.length)];
+        JSONObject json = api.getBasicJson(false, time);
+        JSONArray array = new JSONArray();
+        
+        Arrays.stream(files).sorted().forEach(file -> array.put(getPath(file)));
+        
+        json.put("links", array);
+        
+        ctx.status(200);
+        ctx.result(json.toString(2));
+    }
     
-                json.put("error", false)
-                    .put("link", getPath(selected))
-                    .put("time", System.currentTimeMillis() - time);
-                
-                ctx.status(200);
-                ctx.result(json.toString(2));
-            }
-        }
+    void getFile(String path, Context ctx, long time){
+        File[] files = getFiles(path, ctx, time);
+        if(files.length == 0)
+            return;
+        
+        File selected = files[random.nextInt(files.length)];
+        JSONObject json = api.getBasicJson(false, time)
+            .put("link", getPath(selected));
+        
+        ctx.status(200);
+        ctx.result(json.toString(2));
     }
     
     byte[] getQuote(Quote quote) throws IOException{
@@ -261,6 +264,27 @@ public class ImageUtil{
         }
         
         return raw;
+    }
+    
+    private File[] getFiles(String path, Context ctx, long time){
+        File folder = new File(base, path + "/");
+        
+        if(!folder.exists() || folder.isAbsolute()){
+            logger.info("Received invalid path {} for Image GET request.", path);
+            
+            api.sendErrorJSON(403, "The provided path is not valid.", ctx, time);
+            return new File[0];
+        }else{
+            File[] files = folder.listFiles(filter);
+            if(files == null || files.length == 0){
+                logger.info("Received path {} for Image GET request does not contain any images.", path);
+        
+                api.sendErrorJSON(403, "The provided path does not contain any images.", ctx, time);
+                return new File[0];
+            }
+            
+            return files;
+        }
     }
     
     private String getPath(File file){

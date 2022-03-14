@@ -74,22 +74,32 @@ public class ImageAPI{
             ctx.redirect(docs_url + "#status", 301);
         });
         
+        // Handle all /api/list/img/* requests
+        app.get("/api/list/*", ctx -> {
+            logger.info("Handle GET request for {}", ctx.path());
+            long time = System.currentTimeMillis();
+            
+            String path = ctx.path().replaceFirst("/api/list", "").replace("../", "");
+            util.listContent(path, ctx, time);
+        });
+        
         // Handle all /api/img/* requests
         app.get("/api/img/*", ctx -> {
-            logger.info("Handle GET request for " + ctx.path());
+            logger.info("Handle GET request for {}", ctx.path());
             long time = System.currentTimeMillis();
             
             String path = ctx.path().replaceFirst("/api/img", "").replace("../", "");
-            util.generateResponse(path, ctx, time);
+            util.getFile(path, ctx, time);
         });
         
         // Handle POST requests.
         app.post("/api/quote", ctx -> {
             logger.info("Handle POST request for /api/quote");
+            long time = System.currentTimeMillis();
             
             Quote quote = gson.fromJson(ctx.body(), Quote.class);
             if(quote == null){
-                sendErrorJSON(400, "Received invalid or empty JSON Body.", ctx);
+                sendErrorJSON(400, "Received invalid or empty JSON Body.", ctx, time);
                 return;
             }
             
@@ -100,14 +110,15 @@ public class ImageAPI{
                 raw.getOutputStream().flush();
                 raw.getOutputStream().close();
             }catch(IOException ex){
-                sendErrorJSON(500, "Couldn't generate Image. Make sure the values are valid!", ctx);
+                sendErrorJSON(500, "Couldn't generate Image. Make sure the values are valid!", ctx, time);
             }
         }).post("/api/status", ctx -> {
             logger.info("Handle POST request for /api/status");
+            long time = System.currentTimeMillis();
             
             Status status = gson.fromJson(ctx.body(), Status.class);
             if(status == null){
-                sendErrorJSON(400, "Received invalid or empty JSON Body.", ctx);
+                sendErrorJSON(400, "Received invalid or empty JSON Body.", ctx, time);
                 return;
             }
             
@@ -118,15 +129,20 @@ public class ImageAPI{
                 raw.getOutputStream().flush();
                 raw.getOutputStream().close();
             }catch(IOException ex){
-                sendErrorJSON(500, "Couldn't generate Image. Make sure the values are valid!", ctx);
+                sendErrorJSON(500, "Couldn't generate Image. Make sure the values are valid!", ctx, time);
             }
-        }).post("/api/img/*", ctx -> sendErrorJSON(403, "POST requests are not allowed for this path!", ctx));
+        }).post("/api/img/*", ctx -> sendErrorJSON(403, "POST requests are not allowed for this path!", ctx, System.currentTimeMillis()));
     }
     
-    void sendErrorJSON(int code, String msg, Context ctx){
+    JSONObject getBasicJson(boolean error, long time){
+        return new JSONObject()
+            .put("error", error)
+            .put("time", System.currentTimeMillis() - time);
+    }
+    
+    void sendErrorJSON(int code, String msg, Context ctx, long time){
         JSONObject details = new JSONObject(getDetailsMap(ctx));
-        JSONObject json = new JSONObject()
-                .put("error", true)
+        JSONObject json = getBasicJson(true, time)
                 .put("message", msg)
                 .put("details", details);
         
