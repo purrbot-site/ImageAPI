@@ -1,4 +1,4 @@
-[docs]: https://docs.purrbot.site/api/imageapi
+[docs]: https://docs.purrbot.site/api
 [purr]: https://purrbot.site
 
 # PurrBot Image API

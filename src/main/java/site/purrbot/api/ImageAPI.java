@@ -19,17 +19,11 @@
 package site.purrbot.api;
 
 import ch.qos.logback.classic.Logger;
-import com.google.gson.Gson;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
-import site.purrbot.api.endpoints.Quote;
-import site.purrbot.api.endpoints.Status;
-
-import javax.servlet.http.HttpServletResponse;
 import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,8 +31,6 @@ public class ImageAPI{
     
     private final Logger logger = (Logger)LoggerFactory.getLogger(ImageAPI.class);
     private final File base = new File("img/");
-    
-    private final String docs_url = "https://docs.purrbot.site/api";
     
     public static void main(String[] args){
         new ImageAPI().start();
@@ -56,23 +48,13 @@ public class ImageAPI{
         }
         
         ImageUtil util = new ImageUtil(this);
-        Gson gson = new Gson();
     
         // Setup Javalin and make it handle all Exceptions
         Javalin app = Javalin.create(config -> config.defaultContentType = "application/json").start(2000);
         app.exception(Exception.class, (ex, ctx) -> logger.error("Exception caught", ex));
         
         // Log any call to the /api endpoint
-        app.before("/api/*", ctx -> logger.info("HTTP Request on " + ctx.path()));
-        
-        // Handle redirects
-        app.get("/api/quote", ctx -> {
-            logger.info("Performing redirect for /api/quote");
-            ctx.redirect(docs_url + "#quote", 301);
-        }).get("/api/status", ctx -> {
-            logger.info("Performing redirect for /api/status");
-            ctx.redirect(docs_url + "#status", 301);
-        });
+        app.before("/api/*", ctx -> logger.info("HTTP Request on {}", ctx.path()));
         
         // Handle all /api/list/img/* requests
         app.get("/api/list/*", ctx -> {
@@ -94,44 +76,20 @@ public class ImageAPI{
         
         // Handle POST requests.
         app.post("/api/quote", ctx -> {
-            logger.info("Handle POST request for /api/quote");
-            long time = System.currentTimeMillis();
-            
-            Quote quote = gson.fromJson(ctx.body(), Quote.class);
-            if(quote == null){
-                sendErrorJSON(400, "Received invalid or empty JSON Body.", ctx, time);
-                return;
-            }
-            
-            try{
-                HttpServletResponse raw = ctx.res;
-                raw.setContentType("image/png");
-                raw.getOutputStream().write(util.getQuote(quote));
-                raw.getOutputStream().flush();
-                raw.getOutputStream().close();
-            }catch(IOException ex){
-                sendErrorJSON(500, "Couldn't generate Image. Make sure the values are valid!", ctx, time);
-            }
+            logger.info("Unsupported POST request on /api/quote");
+            sendErrorJSON(410, "/api/quote has been removed from the API.", ctx, System.currentTimeMillis());
         }).post("/api/status", ctx -> {
-            logger.info("Handle POST request for /api/status");
-            long time = System.currentTimeMillis();
-            
-            Status status = gson.fromJson(ctx.body(), Status.class);
-            if(status == null){
-                sendErrorJSON(400, "Received invalid or empty JSON Body.", ctx, time);
-                return;
-            }
-            
-            try{
-                HttpServletResponse raw = ctx.res;
-                raw.setContentType("image/png");
-                raw.getOutputStream().write(util.getStatus(status));
-                raw.getOutputStream().flush();
-                raw.getOutputStream().close();
-            }catch(IOException ex){
-                sendErrorJSON(500, "Couldn't generate Image. Make sure the values are valid!", ctx, time);
-            }
-        }).post("/api/img/*", ctx -> sendErrorJSON(403, "POST requests are not allowed for this path!", ctx, System.currentTimeMillis()));
+            logger.info("Unsupported POST request on /api/status");
+            sendErrorJSON(410, "/api/status has been removed from the API.", ctx, System.currentTimeMillis());
+        }).post("/api/img/*", ctx -> {
+            logger.info("Not allowed POST request towards {}", ctx.path());
+            ctx.header("Allow", "GET");
+            sendErrorJSON(405, "POST requests towards " + ctx.path() + " are not allowed.", ctx, System.currentTimeMillis());
+        }).post("/api/list/*", ctx -> {
+            logger.info("Not allowed POST request towards {}", ctx.path());
+            ctx.header("Allow", "GET");
+            sendErrorJSON(405, "POST requests towards " + ctx.path() + " are not allowed.", ctx, System.currentTimeMillis());
+        });
     }
     
     JSONObject getBasicJson(boolean error, long time){
