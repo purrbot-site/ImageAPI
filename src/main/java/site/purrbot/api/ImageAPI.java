@@ -108,8 +108,12 @@ public class ImageAPI{
             }
         });
         
-        // Handle unsupported POST requests.
-        app.post("/api/quote", ctx -> {
+        // Handle unsupported requests.
+        app.get("/api/owoify", ctx -> {
+            logger.info("Not allowed GET request towards /api/owoify");
+            ctx.header("Allow", "POST");
+            sendErrorJSON(405, "GET requests towards /api/owoify are not allowed", ctx, System.currentTimeMillis());
+        }).post("/api/quote", ctx -> {
             logger.info("Unsupported POST request on /api/quote");
             sendErrorJSON(410, "/api/quote has been removed from the API.", ctx, System.currentTimeMillis());
         }).post("/api/status", ctx -> {
