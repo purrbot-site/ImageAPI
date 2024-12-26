@@ -6,7 +6,7 @@ plugins {
 }
 
 group 'site.purrbot'
-version '1.7.0'
+version '1.8.0'
 
 java {
     sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
@@ -23,7 +23,7 @@ repositories {
 dependencies {
     compile group: 'io.javalin', name: 'javalin', version: '3.13.3'
     compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
-    compile group: 'org.json', name: 'json', version: '20211205'
+    compile group: 'com.google.code.gson', name: 'gson', version: '2.11.0'
     implementation group: 'com.squareup.okhttp3', name: 'okhttp', version: '4.4.0'
 }
 

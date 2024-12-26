@@ -19,21 +19,32 @@
 package site.purrbot.api;
 
 import ch.qos.logback.classic.Logger;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
-import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
+import site.purrbot.api.objects.ErrorResponse;
+import site.purrbot.api.objects.RequestDetails;
+
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
 
 public class ImageAPI{
     
     private final Logger logger = (Logger)LoggerFactory.getLogger(ImageAPI.class);
     private final File base = new File("img/");
+    private final Gson gson = new GsonBuilder()
+        .setPrettyPrinting()
+        .create();
     
     public static void main(String[] args){
         new ImageAPI().start();
+    }
+    
+    public Gson getGson(){
+        return gson;
     }
     
     private void start(){
@@ -48,10 +59,15 @@ public class ImageAPI{
         }
         
         ImageUtil util = new ImageUtil(this);
+        TextOWOifier owOifier = new TextOWOifier(this);
     
         // Setup Javalin and make it handle all Exceptions
         Javalin app = Javalin.create(config -> config.defaultContentType = "application/json").start(2000);
-        app.exception(Exception.class, (ex, ctx) -> logger.error("Exception caught", ex));
+        app.exception(Exception.class, (ex, ctx) -> {
+            logger.error("Exception caught", ex);
+            
+            sendErrorJSON(500, "Encountered an Exception while handling request. Exception: " + ex.getMessage(), ctx, System.currentTimeMillis());
+        });
         
         // Log any call to the /api endpoint
         app.before("/api/*", ctx -> logger.info("HTTP Request on {}", ctx.path()));
@@ -75,6 +91,24 @@ public class ImageAPI{
         });
         
         // Handle POST requests.
+        app.post("/api/owoify", ctx -> {
+            logger.info("Handle POST request for {}", ctx.path());
+            long time = System.currentTimeMillis();
+            
+            try{
+                JsonObject json = gson.fromJson(ctx.body(), JsonObject.class);
+                if(!json.has("text")){
+                    sendErrorJSON(400, "Received JSON Body does not contain a 'text' value.", ctx, time);
+                    return;
+                }
+                
+                owOifier.owoify(json.getAsJsonPrimitive("text").getAsString(), ctx, time);
+            }catch(JsonSyntaxException ex){
+                sendErrorJSON(400, "Received malformed JSON Body in request. Reason: " + ex.getMessage(), ctx, time);
+            }
+        });
+        
+        // Handle unsupported POST requests.
         app.post("/api/quote", ctx -> {
             logger.info("Unsupported POST request on /api/quote");
             sendErrorJSON(410, "/api/quote has been removed from the API.", ctx, System.currentTimeMillis());
@@ -92,29 +126,18 @@ public class ImageAPI{
         });
     }
     
-    JSONObject getBasicJson(boolean error, long time){
-        return new JSONObject()
-            .put("error", error)
-            .put("time", System.currentTimeMillis() - time);
-    }
-    
     void sendErrorJSON(int code, String msg, Context ctx, long time){
-        JSONObject details = new JSONObject(getDetailsMap(ctx));
-        JSONObject json = getBasicJson(true, time)
-                .put("message", msg)
-                .put("details", details);
+        ErrorResponse response = new ErrorResponse(getDetails(ctx), msg, code, time);
         
         ctx.status(code);
-        ctx.result(json.toString(2));
+        ctx.result(gson.toJson(response));
     }
     
-    private Map<String, String> getDetailsMap(Context ctx){
-        Map<String, String> details = new HashMap<>();
-        
-        details.put("path", ctx.path());
-        details.put("content-type", ctx.contentType() == null ? "NONE" : ctx.contentType());
-        details.put("user-agent", ctx.userAgent() == null ? "NONE" : ctx.userAgent());
-        
-        return details;
+    private RequestDetails getDetails(Context ctx){
+        return new RequestDetails(
+            ctx.path(),
+            ctx.contentType() == null ? "NONE" : ctx.contentType(),
+            ctx.userAgent() == null ? "NONE" : ctx.userAgent()
+        );
     }
 }

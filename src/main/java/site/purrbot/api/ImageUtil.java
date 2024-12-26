@@ -20,20 +20,18 @@ package site.purrbot.api;
 
 import ch.qos.logback.classic.Logger;
 import io.javalin.http.Context;
-import okhttp3.OkHttpClient;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
+import site.purrbot.api.objects.ImgLinkListResponse;
+import site.purrbot.api.objects.ImgLinkResponse;
 
 import java.io.*;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ImageUtil{
     
     private final ImageAPI api;
-    
-    private final OkHttpClient CLIENT = new OkHttpClient();
     
     private final Random random = new Random();
     private final Logger logger = (Logger)LoggerFactory.getLogger(ImageUtil.class);
@@ -57,15 +55,10 @@ public class ImageUtil{
         if(files.length == 0)
             return;
         
-        JSONObject json = api.getBasicJson(false, time);
-        JSONArray array = new JSONArray();
-        
-        Arrays.stream(files).sorted().forEach(file -> array.put(getPath(file)));
-        
-        json.put("links", array);
+        List<String> links = Arrays.stream(files).map(this::getPath).collect(Collectors.toList());
         
         ctx.status(200);
-        ctx.result(json.toString(2));
+        ctx.result(api.getGson().toJson(new ImgLinkListResponse(links, 200, time)));
     }
     
     void getFile(String path, Context ctx, long time){
@@ -74,11 +67,9 @@ public class ImageUtil{
             return;
         
         File selected = files[random.nextInt(files.length)];
-        JSONObject json = api.getBasicJson(false, time)
-            .put("link", getPath(selected));
         
         ctx.status(200);
-        ctx.result(json.toString(2));
+        ctx.result(api.getGson().toJson(new ImgLinkResponse(getPath(selected), time)));
     }
     
     private File[] getFiles(String path, Context ctx, long time){
