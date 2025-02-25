@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Andre601
+ * Copyright 2025 Andre601
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
  * documentation files (the "Software"), to deal in the Software without restriction, including without limitation
@@ -30,31 +30,29 @@ public class TextOWOifier{
     private final List<String> emotes = Arrays.asList(">w<", "^w^", "UwU", "owo");
     private final Random random = new Random();
     
-    private final ImageAPI api;
-    
-    public TextOWOifier(ImageAPI api){
-        this.api = api;
-    }
-    
     public void owoify(String text, Context ctx, long time){
         StringBuilder builder = new StringBuilder(text.length());
         for(char c : text.toCharArray()){
-            if(c == 'l' || c == 'r'){
-                builder.append('w');
-            }else
-            if(c == 'L' || c == 'R'){
-                builder.append('W');
-            }else
-            if(c == '!'){
-                synchronized(random){
-                    builder.append(' ').append(emotes.get(random.nextInt(emotes.size()))).append(' ');
-                }
-            }else{
-                builder.append(c);
+            switch(c){
+                case 'l':
+                case 'r':
+                    builder.append('w');
+                    break;
+                case 'L':
+                case 'R':
+                    builder.append('L');
+                    break;
+                case '!':
+                    synchronized(random){
+                        builder.append(' ').append(emotes.get(random.nextInt(emotes.size()))).append(' ');
+                    }
+                    break;
+                default:
+                    builder.append(c);
             }
         }
         
         ctx.status(200);
-        ctx.result(api.getGson().toJson(new OWOifiedTextResponse(builder.toString(), time)));
+        ctx.json(new OWOifiedTextResponse(builder.toString(), time));
     }
 }

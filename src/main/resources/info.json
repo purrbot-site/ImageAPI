@@ -1,0 +1,13 @@
+{
+  "name": "${project.name}",
+  "version": "${project.version}",
+  "description": "${project.description}",
+  "links": {
+    "documentation": "https://docs.purrbot.site/api",
+    "source": "https://github.com/purrbot-site/ImageAPI"
+  },
+  "license": {
+    "type": "MIT",
+    "link": "https://github.com/purrbot-site/ImageAPI/blob/master/LICENSE"
+  }
+}

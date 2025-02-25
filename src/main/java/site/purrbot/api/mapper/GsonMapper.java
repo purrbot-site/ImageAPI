@@ -16,15 +16,29 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package site.purrbot.api.objects;
+package site.purrbot.api.mapper;
 
-public class OWOifiedTextResponse extends RequestResponse{
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import io.javalin.json.JsonMapper;
+import org.jetbrains.annotations.NotNull;
+
+import java.lang.reflect.Type;
+
+public class GsonMapper implements JsonMapper{
+    private final Gson gson = new GsonBuilder()
+        .setPrettyPrinting()
+        .create();
     
-    private final String text;
+    @NotNull
+    @Override
+    public String toJsonString(@NotNull Object obj, @NotNull Type type){
+        return gson.toJson(obj, type);
+    }
     
-    public OWOifiedTextResponse(String text, long time){
-        super(false, 200, time);
-        
-        this.text = text;
+    @NotNull
+    @Override
+    public <T> T fromJsonString(@NotNull String json, @NotNull Type targetType){
+        return gson.fromJson(json, targetType);
     }
 }

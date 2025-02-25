@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Andre601
+ * Copyright 2025 Andre601
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
  * documentation files (the "Software"), to deal in the Software without restriction, including without limitation
@@ -24,8 +24,8 @@ public class ImgLinkListResponse extends RequestResponse{
     
     private final List<String> links;
     
-    public ImgLinkListResponse(List<String> links, int responseCode, long time){
-        super(false, responseCode, time);
+    public ImgLinkListResponse(List<String> links, long time){
+        super(false, 200, time);
         
         this.links = links;
     }

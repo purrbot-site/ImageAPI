@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Andre601
+ * Copyright 2025 Andre601
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
  * documentation files (the "Software"), to deal in the Software without restriction, including without limitation
@@ -58,7 +58,7 @@ public class ImageUtil{
         List<String> links = Arrays.stream(files).map(this::getPath).collect(Collectors.toList());
         
         ctx.status(200);
-        ctx.result(api.getGson().toJson(new ImgLinkListResponse(links, 200, time)));
+        ctx.json(new ImgLinkListResponse(links, time));
     }
     
     void getFile(String path, Context ctx, long time){
@@ -69,7 +69,7 @@ public class ImageUtil{
         File selected = files[random.nextInt(files.length)];
         
         ctx.status(200);
-        ctx.result(api.getGson().toJson(new ImgLinkResponse(getPath(selected), time)));
+        ctx.json(new ImgLinkResponse(getPath(selected), time));
     }
     
     private File[] getFiles(String path, Context ctx, long time){

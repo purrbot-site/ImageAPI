@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Andre601
+ * Copyright 2025 Andre601
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
  * documentation files (the "Software"), to deal in the Software without restriction, including without limitation
@@ -26,10 +26,11 @@ import com.google.gson.JsonSyntaxException;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import org.slf4j.LoggerFactory;
+import site.purrbot.api.mapper.GsonMapper;
 import site.purrbot.api.objects.ErrorResponse;
 import site.purrbot.api.objects.RequestDetails;
 
-import java.io.File;
+import java.io.*;
 
 public class ImageAPI{
     
@@ -39,12 +40,10 @@ public class ImageAPI{
         .setPrettyPrinting()
         .create();
     
+    private JsonObject infoJson = null;
+    
     public static void main(String[] args){
         new ImageAPI().start();
-    }
-    
-    public Gson getGson(){
-        return gson;
     }
     
     private void start(){
@@ -59,10 +58,10 @@ public class ImageAPI{
         }
         
         ImageUtil util = new ImageUtil(this);
-        TextOWOifier owOifier = new TextOWOifier(this);
+        TextOWOifier owoifier = new TextOWOifier();
     
         // Setup Javalin and make it handle all Exceptions
-        Javalin app = Javalin.create(config -> config.defaultContentType = "application/json").start(2000);
+        Javalin app = Javalin.create(config -> config.jsonMapper(new GsonMapper())).start(2000);
         app.exception(Exception.class, (ex, ctx) -> {
             logger.error("Exception caught", ex);
             
@@ -90,30 +89,46 @@ public class ImageAPI{
             util.getFile(path, ctx, time);
         });
         
-        // Handle POST requests.
+        // Handle POST/GET towards /api/owoify.
         app.post("/api/owoify", ctx -> {
             logger.info("Handle POST request for {}", ctx.path());
             long time = System.currentTimeMillis();
             
             try{
+                
                 JsonObject json = gson.fromJson(ctx.body(), JsonObject.class);
                 if(!json.has("text")){
                     sendErrorJSON(400, "Received JSON Body does not contain a 'text' value.", ctx, time);
                     return;
                 }
                 
-                owOifier.owoify(json.getAsJsonPrimitive("text").getAsString(), ctx, time);
+                owoifier.owoify(json.getAsJsonPrimitive("text").getAsString(), ctx, time);
             }catch(JsonSyntaxException ex){
                 sendErrorJSON(400, "Received malformed JSON Body in request. Reason: " + ex.getMessage(), ctx, time);
             }
+        }).get("/api/owoify", ctx -> {
+            logger.info("Handle GET request for {}", ctx.path());
+            long time = System.currentTimeMillis();
+            
+            String query = ctx.queryParam("text");
+            if(query == null || query.isEmpty()){
+                sendErrorJSON(400, "Received request does not contain a 'text' query parameter, or it was empty.", ctx, time);
+                return;
+            }
+            
+            owoifier.owoify(query, ctx, time);
+        });
+        
+        // Handle /api/info requests
+        app.get("/api/info", ctx -> {
+            logger.info("Handle GET request for {}", ctx.path());
+            long time = System.currentTimeMillis();
+            
+            fetchInfoJson(ctx, time);
         });
         
         // Handle unsupported requests.
-        app.get("/api/owoify", ctx -> {
-            logger.info("Not allowed GET request towards /api/owoify");
-            ctx.header("Allow", "POST");
-            sendErrorJSON(405, "GET requests towards /api/owoify are not allowed", ctx, System.currentTimeMillis());
-        }).post("/api/quote", ctx -> {
+        app.post("/api/quote", ctx -> {
             logger.info("Unsupported POST request on /api/quote");
             sendErrorJSON(410, "/api/quote has been removed from the API.", ctx, System.currentTimeMillis());
         }).post("/api/status", ctx -> {
@@ -133,8 +148,8 @@ public class ImageAPI{
     void sendErrorJSON(int code, String msg, Context ctx, long time){
         ErrorResponse response = new ErrorResponse(getDetails(ctx), msg, code, time);
         
+        ctx.json(response);
         ctx.status(code);
-        ctx.result(gson.toJson(response));
     }
     
     private RequestDetails getDetails(Context ctx){
@@ -143,5 +158,36 @@ public class ImageAPI{
             ctx.contentType() == null ? "NONE" : ctx.contentType(),
             ctx.userAgent() == null ? "NONE" : ctx.userAgent()
         );
+    }
+    
+    private void fetchInfoJson(Context ctx, long time){
+        if(infoJson != null){
+            ctx.json(infoJson);
+            ctx.status(200);
+            return;
+        }
+        
+        try(InputStream stream = getClass().getResourceAsStream("/info.json")){
+            if(stream == null){
+                sendErrorJSON(500, "Cannot retrieve API information. Reason: Received input stream was null.", ctx, time);
+                return;
+            }
+            
+            BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+            
+            infoJson = gson.fromJson(reader, JsonObject.class);
+            if(infoJson == null){
+                sendErrorJSON(500, "Cannot retrieve API information. Reason Retrieved JSON was null.", ctx, time);
+                reader.close();
+                return;
+            }
+            
+            ctx.json(infoJson);
+            ctx.status(200);
+            
+            reader.close();
+        }catch(IOException ex){
+            sendErrorJSON(500, "Encountered an IOException: " + ex.getMessage(), ctx, time);
+        }
     }
 }
