@@ -61,7 +61,7 @@ public class ImageAPI{
         TextOWOifier owoifier = new TextOWOifier();
     
         // Setup Javalin and make it handle all Exceptions
-        Javalin app = Javalin.create(config -> config.jsonMapper(new GsonMapper())).start(2000);
+        Javalin app = Javalin.create(config -> config.jsonMapper(new GsonMapper(gson))).start(2000);
         app.exception(Exception.class, (ex, ctx) -> {
             logger.error("Exception caught", ex);
             
