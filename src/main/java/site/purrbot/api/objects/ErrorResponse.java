@@ -29,4 +29,10 @@ public class ErrorResponse extends RequestResponse{
         this.details = details;
         this.message = message;
     }
+    public ErrorResponse(RequestDetails details, String message, int responseCode, long time, String deprecationWarning){
+        super(true, responseCode, time, deprecationWarning);
+        
+        this.details = details;
+        this.message = message;
+    }
 }

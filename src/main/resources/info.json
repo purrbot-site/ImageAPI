@@ -4,7 +4,8 @@
   "description": "${project.description}",
   "links": {
     "documentation": "https://docs.purrbot.site/api",
-    "source": "https://github.com/purrbot-site/ImageAPI"
+    "source": "https://github.com/purrbot-site/ImageAPI",
+    "api": "https://api.purrbot.site/v2"
   },
   "license": {
     "type": "MIT",

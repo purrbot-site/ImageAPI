@@ -26,10 +26,17 @@ public class RequestResponse{
     @SerializedName("response-code")
     private final int responseCode;
     private final long time;
+    @SerializedName("deprecation-warning")
+    private final String deprecationWarning;
     
     public RequestResponse(boolean error, int responseCode, long time){
+        this(error, responseCode, time, null);
+    }
+    
+    public RequestResponse(boolean error, int responseCode, long time, String deprecationWarning){
         this.error = error;
         this.responseCode = responseCode;
         this.time = System.currentTimeMillis() - time;
+        this.deprecationWarning = deprecationWarning;
     }
 }

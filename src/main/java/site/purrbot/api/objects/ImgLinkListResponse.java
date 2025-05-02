@@ -29,4 +29,10 @@ public class ImgLinkListResponse extends RequestResponse{
         
         this.links = links;
     }
+    
+    public ImgLinkListResponse(List<String> links, long time, String deprecationWarning){
+        super(false, 200, time, deprecationWarning);
+        
+        this.links = links;
+    }
 }

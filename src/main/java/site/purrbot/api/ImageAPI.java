@@ -41,6 +41,7 @@ public class ImageAPI{
         .create();
     
     private JsonObject infoJson = null;
+    private TextOWOifier owoifier;
     
     public static void main(String[] args){
         new ImageAPI().start();
@@ -58,55 +59,70 @@ public class ImageAPI{
         }
         
         ImageUtil util = new ImageUtil(this);
-        TextOWOifier owoifier = new TextOWOifier();
-    
+        this.owoifier = new TextOWOifier();
+        
         // Setup Javalin and make it handle all Exceptions
-        Javalin app = Javalin.create(config -> config.jsonMapper(new GsonMapper(gson))).start(2000);
+        Javalin app = Javalin.create(config -> {
+            config.jsonMapper(new GsonMapper(gson));
+            config.requestLogger.http((ctx, ms) -> logger.info("Processed request {} in {}ms", ctx.path(), ms));
+        }).start(2000);
         app.exception(Exception.class, (ex, ctx) -> {
             logger.error("Exception caught", ex);
             
             sendErrorJSON(500, "Encountered an Exception while handling request. Exception: " + ex.getMessage(), ctx, System.currentTimeMillis());
         });
         
-        // Log any call to the /api endpoint
-        app.before("/api/*", ctx -> logger.info("HTTP Request on {}", ctx.path()));
-        
-        // Handle all /api/list/img/* requests
-        app.get("/api/list/*", ctx -> {
-            logger.info("Handle GET request for {}", ctx.path());
+        // New v2 API endpoints.
+        app.get("/v2/list/<path>", ctx -> {
             long time = System.currentTimeMillis();
             
-            String path = ctx.path().replaceFirst("/api/list", "").replace("../", "");
-            util.listContent(path, ctx, time);
+            String path = ctx.pathParam("path");
+            util.listContent(path, ctx, time, false);
+        });
+        app.get("/v2/img/<path>", ctx -> {
+            long time = System.currentTimeMillis();
+            
+            String path = ctx.pathParam("path");
+            util.getFile(path, ctx, time, false);
         });
         
-        // Handle all /api/img/* requests
-        app.get("/api/img/*", ctx -> {
-            logger.info("Handle GET request for {}", ctx.path());
-            long time = System.currentTimeMillis();
-            
-            String path = ctx.path().replaceFirst("/api/img", "").replace("../", "");
-            util.getFile(path, ctx, time);
-        });
-        
-        // Handle POST/GET towards /api/owoify.
-        app.post("/api/owoify", ctx -> {
-            logger.info("Handle POST request for {}", ctx.path());
-            long time = System.currentTimeMillis();
-            
-            try{
-                
-                JsonObject json = gson.fromJson(ctx.body(), JsonObject.class);
-                if(!json.has("text")){
-                    sendErrorJSON(400, "Received JSON Body does not contain a 'text' value.", ctx, time);
+        app.post("/v2/owoify", ctx -> processOWOifyJSON(ctx, false))
+            .get("/v2/owoify", ctx -> {
+                long time = System.currentTimeMillis();
+                String query = ctx.queryParam("text");
+                if(query == null || query.isEmpty()){
+                    sendErrorJSON(400, "Received GET request with no/empty text Query Parameter.", ctx, time);
                     return;
                 }
                 
-                owoifier.owoify(json.getAsJsonPrimitive("text").getAsString(), ctx, time);
-            }catch(JsonSyntaxException ex){
-                sendErrorJSON(400, "Received malformed JSON Body in request. Reason: " + ex.getMessage(), ctx, time);
-            }
-        }).get("/api/owoify", ctx -> {
+                owoifier.owoify(query, ctx, time, false);
+            });
+        
+        app.get("/", ctx -> {
+            long time = System.currentTimeMillis();
+            fetchInfoJson(ctx, time);
+        });
+        
+        // Old /api/list/img/* Endpoints
+        app.get("/api/list/<path>", ctx -> {
+            logger.info("Handle GET request for {}", ctx.path());
+            long time = System.currentTimeMillis();
+            
+            String path = ctx.pathParam("path");
+            util.listContent(path, ctx, time, true);
+        });
+        
+        // Old /api/img/* Endpoints
+        app.get("/api/img/<path>", ctx -> {
+            logger.info("Handle GET request for {}", ctx.path());
+            long time = System.currentTimeMillis();
+            
+            String path = ctx.pathParam("path");
+            util.getFile(path, ctx, time, true);
+        });
+        
+        // Old /api/owoify Endpoints
+        app.post("/api/owoify", ctx -> processOWOifyJSON(ctx, true)).get("/api/owoify", ctx -> {
             logger.info("Handle GET request for {}", ctx.path());
             long time = System.currentTimeMillis();
             
@@ -116,10 +132,10 @@ public class ImageAPI{
                 return;
             }
             
-            owoifier.owoify(query, ctx, time);
+            owoifier.owoify(query, ctx, time, true);
         });
         
-        // Handle /api/info requests
+        // Old /api/info Endpoint
         app.get("/api/info", ctx -> {
             logger.info("Handle GET request for {}", ctx.path());
             long time = System.currentTimeMillis();
@@ -177,7 +193,7 @@ public class ImageAPI{
             
             infoJson = gson.fromJson(reader, JsonObject.class);
             if(infoJson == null){
-                sendErrorJSON(500, "Cannot retrieve API information. Reason Retrieved JSON was null.", ctx, time);
+                sendErrorJSON(500, "Cannot retrieve API information. Reason: Retrieved JSON was null.", ctx, time);
                 reader.close();
                 return;
             }
@@ -188,6 +204,27 @@ public class ImageAPI{
             reader.close();
         }catch(IOException ex){
             sendErrorJSON(500, "Encountered an IOException: " + ex.getMessage(), ctx, time);
+        }
+    }
+    
+    private void processOWOifyJSON(Context ctx, boolean deprecated){
+        long time = System.currentTimeMillis();
+        
+        try{
+            JsonObject json = gson.fromJson(ctx.body(), JsonObject.class);
+            if(!json.has("text")){
+                sendErrorJSON(400, "The received JSON does not contain a 'text' field.", ctx, time);
+                return;
+            }
+            
+            if(owoifier == null){
+                sendErrorJSON(500, "The TextOWOIfier is not available. If this issue persists, report it to the developer!", ctx, time);
+                return;
+            }
+            
+            owoifier.owoify(json.getAsJsonPrimitive("text").getAsString(), ctx, time, deprecated);
+        }catch(JsonSyntaxException ex){
+            sendErrorJSON(400, "Received invalid JSON Body: " + ex.getMessage(), ctx, time);
         }
     }
 }

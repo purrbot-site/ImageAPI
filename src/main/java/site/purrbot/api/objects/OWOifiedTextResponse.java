@@ -27,4 +27,10 @@ public class OWOifiedTextResponse extends RequestResponse{
         
         this.text = text;
     }
+    
+    public OWOifiedTextResponse(String text, long time, String deprecationWarning){
+        super(false, 200, time, deprecationWarning);
+        
+        this.text = text;
+    }
 }

@@ -27,4 +27,10 @@ public class ImgLinkResponse extends RequestResponse{
         
         this.link = link;
     }
+    
+    public ImgLinkResponse(String link, long time, String deprecationWarning){
+        super(false, 200, time, deprecationWarning);
+        
+        this.link = link;
+    }
 }

@@ -50,7 +50,7 @@ public class ImageUtil{
         this.api = api;
     }
     
-    void listContent(String path, Context ctx, long time){
+    void listContent(String path, Context ctx, long time, boolean deprecated){
         File[] files = getFiles(path, ctx, time);
         if(files.length == 0)
             return;
@@ -58,10 +58,18 @@ public class ImageUtil{
         List<String> links = Arrays.stream(files).map(this::getPath).collect(Collectors.toList());
         
         ctx.status(200);
-        ctx.json(new ImgLinkListResponse(links, time));
+        if(deprecated){
+            ctx.json(new ImgLinkListResponse(links, time, String.format(
+                "This endpoint was deprecated and will be removed in the future. " +
+                "Please forward any future requests towards https://api.purrbot.site/v2/list/%s",
+                path
+            )));
+        }else{
+            ctx.json(new ImgLinkListResponse(links, time));
+        }
     }
     
-    void getFile(String path, Context ctx, long time){
+    void getFile(String path, Context ctx, long time, boolean deprecated){
         File[] files = getFiles(path, ctx, time);
         if(files.length == 0)
             return;
@@ -69,7 +77,14 @@ public class ImageUtil{
         File selected = files[random.nextInt(files.length)];
         
         ctx.status(200);
-        ctx.json(new ImgLinkResponse(getPath(selected), time));
+        if(deprecated){
+            ctx.json(new ImgLinkResponse(getPath(selected), time, String.format(
+                "This endpoint was deprecated. Please forward future requests towards https://api.purrbot.site/v2/img/%s",
+                path
+            )));
+        }else{
+            ctx.json(new ImgLinkResponse(getPath(selected), time));
+        }
     }
     
     private File[] getFiles(String path, Context ctx, long time){
@@ -94,6 +109,6 @@ public class ImageUtil{
     }
     
     private String getPath(File file){
-        return ("https://purrbot.site/" + file.getPath()).replace("\\", "/");
+        return ("https://cdn.purrbot.site/" + file.getPath().substring("img/".length())).replace("\\", "/");
     }
 }

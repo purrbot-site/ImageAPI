@@ -30,7 +30,7 @@ public class TextOWOifier{
     private final List<String> emotes = Arrays.asList(">w<", "^w^", "UwU", "owo");
     private final Random random = new Random();
     
-    public void owoify(String text, Context ctx, long time){
+    public void owoify(String text, Context ctx, long time, boolean deprecated){
         StringBuilder builder = new StringBuilder(text.length());
         for(char c : text.toCharArray()){
             switch(c){
@@ -53,6 +53,13 @@ public class TextOWOifier{
         }
         
         ctx.status(200);
-        ctx.json(new OWOifiedTextResponse(builder.toString(), time));
+        if(deprecated){
+            ctx.json(new OWOifiedTextResponse(builder.toString(), time,
+                "This endpoint was deprecated and will be removed in the future. " +
+                "Please forward any future requests towards https://api.purrbot.site/v2/owoify"
+            ));
+        }else{
+            ctx.json(new OWOifiedTextResponse(builder.toString(), time));
+        }
     }
 }
