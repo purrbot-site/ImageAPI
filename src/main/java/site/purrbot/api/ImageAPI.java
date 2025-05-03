@@ -28,6 +28,7 @@ import io.javalin.http.Context;
 import org.slf4j.LoggerFactory;
 import site.purrbot.api.mapper.GsonMapper;
 import site.purrbot.api.objects.ErrorResponse;
+import site.purrbot.api.objects.OWOifyRequest;
 import site.purrbot.api.objects.RequestDetails;
 
 import java.io.*;
@@ -89,13 +90,18 @@ public class ImageAPI{
         app.post("/v2/owoify", ctx -> processOWOifyJSON(ctx, false))
             .get("/v2/owoify", ctx -> {
                 long time = System.currentTimeMillis();
-                String query = ctx.queryParam("text");
-                if(query == null || query.isEmpty()){
-                    sendErrorJSON(400, "Received GET request with no/empty text Query Parameter.", ctx, time);
+                
+                String text = ctx.queryParam("text");
+                boolean stutter = Boolean.parseBoolean(ctx.queryParam("stutter"));
+                boolean emoticons = Boolean.parseBoolean(ctx.queryParam("emoticons"));
+                boolean wordSubstitution = Boolean.parseBoolean(ctx.queryParam("replace-words"));
+                
+                if(text == null || text.isEmpty()){
+                    sendErrorJSON(400, "Received request does not contain a 'text' query parameter, or it was empty.", ctx, time);
                     return;
                 }
                 
-                owoifier.owoify(query, ctx, time, false);
+                owoifier.owoify(new OWOifyRequest(text, stutter, emoticons, wordSubstitution), ctx, time, false);
             });
         
         app.get("/", ctx -> {
@@ -126,13 +132,17 @@ public class ImageAPI{
             logger.info("Handle GET request for {}", ctx.path());
             long time = System.currentTimeMillis();
             
-            String query = ctx.queryParam("text");
-            if(query == null || query.isEmpty()){
+            String text = ctx.queryParam("text");
+            boolean stutter = Boolean.getBoolean(ctx.queryParam("stutter"));
+            boolean emoticons = Boolean.getBoolean(ctx.queryParam("emoticons"));
+            boolean wordSubstitution = Boolean.getBoolean(ctx.queryParam("replace-words"));
+            
+            if(text == null || text.isEmpty()){
                 sendErrorJSON(400, "Received request does not contain a 'text' query parameter, or it was empty.", ctx, time);
                 return;
             }
             
-            owoifier.owoify(query, ctx, time, true);
+            owoifier.owoify(new OWOifyRequest(text, stutter, emoticons, wordSubstitution), ctx, time, true);
         });
         
         // Old /api/info Endpoint
@@ -211,9 +221,14 @@ public class ImageAPI{
         long time = System.currentTimeMillis();
         
         try{
-            JsonObject json = gson.fromJson(ctx.body(), JsonObject.class);
-            if(!json.has("text")){
-                sendErrorJSON(400, "The received JSON does not contain a 'text' field.", ctx, time);
+            OWOifyRequest request = gson.fromJson(ctx.body(), OWOifyRequest.class);
+            if(request == null){
+                sendErrorJSON(400, "The received JSON was invalid or didn't exist.", ctx, time);
+                return;
+            }
+            
+            if(request.getText() == null || request.getText().isEmpty()){
+                sendErrorJSON(400, "The received JSON does not contain a 'text' field or it was empty.", ctx, time);
                 return;
             }
             
@@ -222,7 +237,7 @@ public class ImageAPI{
                 return;
             }
             
-            owoifier.owoify(json.getAsJsonPrimitive("text").getAsString(), ctx, time, deprecated);
+            owoifier.owoify(request, ctx, time, deprecated);
         }catch(JsonSyntaxException ex){
             sendErrorJSON(400, "Received invalid JSON Body: " + ex.getMessage(), ctx, time);
         }
