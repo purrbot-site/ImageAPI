@@ -5,7 +5,8 @@
   "links": {
     "documentation": "https://docs.purrbot.site/api",
     "source": "https://github.com/purrbot-site/ImageAPI",
-    "api": "https://api.purrbot.site/v2"
+    "api": "https://api.purrbot.site/v2",
+    "legal": "https://docs.purrbot.site/legal/api"
   },
   "license": {
     "type": "MIT",
