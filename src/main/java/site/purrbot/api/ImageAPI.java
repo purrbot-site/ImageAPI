@@ -18,30 +18,45 @@
 
 package site.purrbot.api;
 
-import ch.qos.logback.classic.Logger;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
+import io.swagger.v3.oas.models.media.Content;
+import io.swagger.v3.oas.models.media.MediaType;
+import io.swagger.v3.oas.models.parameters.Parameter;
+import io.swagger.v3.oas.models.parameters.RequestBody;
+import io.swagger.v3.parser.OpenAPIV3Parser;
+import io.swagger.v3.parser.core.models.SwaggerParseResult;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import site.purrbot.api.mapper.GsonMapper;
 import site.purrbot.api.objects.ErrorResponse;
 import site.purrbot.api.objects.OWOifyRequest;
 import site.purrbot.api.objects.RequestDetails;
+import site.purrbot.api.objects.openapi.APIPath;
+import site.purrbot.api.objects.openapi.APIPathsResponse;
+import site.purrbot.api.objects.openapi.APIParameter;
 
 import java.io.*;
+import java.util.*;
 
 public class ImageAPI{
     
-    private final Logger logger = (Logger)LoggerFactory.getLogger(ImageAPI.class);
+    private final Logger logger = LoggerFactory.getLogger(ImageAPI.class);
     private final File base = new File("img/");
     private final Gson gson = new GsonBuilder()
         .setPrettyPrinting()
         .create();
     
     private JsonObject infoJson = null;
+    private OpenAPI openAPI = null;
+    
     private TextOWOifier owoifier;
     
     public static void main(String[] args){
@@ -71,6 +86,10 @@ public class ImageAPI{
             logger.error("Exception caught", ex);
             
             sendErrorJSON(500, "Encountered an Exception while handling request. Exception: " + ex.getMessage(), ctx, System.currentTimeMillis());
+        });
+        
+        app.get("/v2/", ctx -> {
+            fetchOpenAPIJson(ctx, System.currentTimeMillis());
         });
         
         // New v2 API endpoints.
@@ -217,6 +236,43 @@ public class ImageAPI{
         }
     }
     
+    private void fetchOpenAPIJson(Context ctx, long time){
+        if(openAPI != null){
+            displayAPIPaths(ctx, time);
+            return;
+        }
+        
+        SwaggerParseResult result = new OpenAPIV3Parser().readLocation("https://raw.githubusercontent.com/purrbot-site/Docs/master/docs/assets/imageapi.json", null, null);
+        
+        if(result.getMessages() != null && !result.getMessages().isEmpty()){
+            sendErrorJSON(
+                    500,
+                    String.format(
+                            "Encountered an error while parsing OpenAPI JSON: %s",
+                            String.join(";", result.getMessages())
+                    ),
+                    ctx,
+                    time
+            );
+            return;
+        }
+        
+        OpenAPI openAPI = result.getOpenAPI();
+        if(openAPI == null){
+            sendErrorJSON(
+                    500,
+                    "Received OpenAPI instance was null.",
+                    ctx,
+                    time
+            );
+            return;
+        }
+        
+        this.openAPI = openAPI;
+        
+        displayAPIPaths(ctx, time);
+    }
+    
     private void processOWOifyJSON(Context ctx, boolean deprecated){
         long time = System.currentTimeMillis();
         
@@ -241,5 +297,58 @@ public class ImageAPI{
         }catch(JsonSyntaxException ex){
             sendErrorJSON(400, "Received invalid JSON Body: " + ex.getMessage(), ctx, time);
         }
+    }
+    
+    private void displayAPIPaths(Context ctx, long time){
+        List<APIPath> paths = new ArrayList<>();
+        for(Map.Entry<String, PathItem> path : openAPI.getPaths().entrySet()){
+            if(path.getValue().getGet() != null){
+                paths.add(processAPIPath(path.getKey(), "GET", path.getValue().getGet()));
+            }
+            if(path.getValue().getPost() != null){
+                paths.add(processAPIPath(path.getKey(), "POST", path.getValue().getPost()));
+            }
+        }
+        
+        APIPathsResponse response = new APIPathsResponse(time, paths);
+        
+        ctx.status(200);
+        ctx.json(response);
+    }
+    
+    private APIPath processAPIPath(String name, String method, Operation operation){
+        String pathName = "https://api.purrbot.site/v2" + name;
+        String description = operation.getDescription();
+        Map<String, String> requestBodies = null;
+        
+        
+        if(operation.getRequestBody() != null && operation.getRequestBody().getContent() != null){
+            Content content = operation.getRequestBody().getContent();
+            requestBodies = new HashMap<>();
+            for(Map.Entry<String, MediaType> schema : content.entrySet()){
+                if(schema.getValue().getSchema() == null || schema.getValue().getSchema().get$ref() == null)
+                    continue;
+                
+                String ref = schema.getValue().getSchema().get$ref().toLowerCase(Locale.ROOT);
+                if(ref.startsWith("#/components/schemas/")){
+                    requestBodies.put(
+                            schema.getKey(),
+                            "https://docs.purrbot.site/api/#" + ref.substring("#/components/schemas/".length()));
+                }else{
+                    requestBodies.put(schema.getKey(), ref);
+                }
+            }
+        }
+        
+        Boolean deprecated = operation.getDeprecated();
+        
+        List<APIParameter> parameters = null;
+        if(operation.getParameters() != null){
+            parameters = new ArrayList<>();
+            for(Parameter parameter : operation.getParameters())
+                parameters.add(new APIParameter(parameter.getName(), parameter.getIn(), parameter.getDescription(), parameter.getRequired()));
+        }
+        
+        return new APIPath(pathName, method, description, requestBodies, deprecated, parameters);
     }
 }
